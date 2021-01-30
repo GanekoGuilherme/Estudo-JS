@@ -1,12 +1,20 @@
 const express = require('express');
 const Teste = require('./models/teste');
 
+// import dotenv for test
+require('dotenv').config();
+
 const PORT = 3000;
 const HOST = '0.0.0.0';
 
 const app = express();
 
-// save 'msg' in collections 'teste'
+// test env
+console.log(process.env.DB_USER);
+console.log(process.env.DB_PASS);
+console.log(process.env.DB_NAME);
+
+// test save 'msg' in collections 'teste'
 app.get('/teste/:msg', async (req,res) => {
   try{    
     await Teste.create({msg:req.params.msg});
@@ -16,6 +24,5 @@ app.get('/teste/:msg', async (req,res) => {
     return res.send("Error on save!");
   }
 });
-
 
 app.listen(PORT,HOST);
