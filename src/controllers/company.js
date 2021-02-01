@@ -1,16 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const Company = require('../models/company');
+const login = require('../middleware/login');
+const User = require('../models/user');
 
-router.post('/company', async (req, res) => {
+// create company (products and services are not obrigated) and registre on user
+router.post('/company',login, async (req, res) => {
     try {
       const company = {
         name: req.body.name || '',
         cnpj: req.body.cnpj || '',
+        token: req.user || '',
         products: req.body.products
       }
-  
-      console.log(company);
   
       // validate company
       // validate name
@@ -43,16 +45,20 @@ router.post('/company', async (req, res) => {
         });
       }    
   
-      if(!isProductNameOk) return res.status(400).send({ msg: "Product's name is invalid!" });
-  
+      // ends registration with error
+      if(!isProductNameOk) return res.status(400).send({ msg: "Product's name is invalid!" });  
       if(!isServicesNameOk) return res.status(400).send({ msg: "Service's name is invalid!" });
       if(!isServicesValueOk) return res.status(400).send({ msg: "Service's value is invalid!" });
   
-      await Company.create(company);
+      // register on DB company
+      const companyCreated = await Company.create(company);    
+      // update user's documents with company
+      await User.updateOne({_id:company.token.idUser}, {$push: {companies: [{company_id: companyCreated._id, role:1}]}});
+      
       return res.status(200).send({ msg: "Company registred!" });
     } catch (error) {
       console.log(error);
-      return res.status(400).send({ msg: "There are fields invalids!" });
+      return res.status(400).send({ msg: "Company registration failure!" });
     }
   });
 
