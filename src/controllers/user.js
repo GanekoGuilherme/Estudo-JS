@@ -111,23 +111,54 @@ router.get('/user_all', auth, async (req, res) => {
 // delete user (own)
 router.delete('/user', auth, async (req, res) => {
   try {
-    // verify if this account has company
     const originalUser = await User.findById(req.user.idUser);
-    if(originalUser == null) return res.status(404).send({ msg: "User not found!" });
+    // verify if this account has company    
+    if (originalUser == null) return res.status(404).send({ msg: "User not found!" });
     if (originalUser.companies != null && originalUser.companies.length > 0) {
       // verify if this account is owner
       await originalUser.companies.forEach(async element => {
         if (element.role == 1) {
           // delete company
-          await Company.deleteOne({_id:element.company_id});
+          await Company.deleteOne({ _id: element.company_id });
         }
       });
     }
     // delete user
-    await User.deleteOne({ _id: req.user.idUser});
+    await User.deleteOne({ _id: req.user.idUser });
+
     return res.status(200).send({ msg: "User deleted!" });
   } catch (error) {
-    console.log(error);
+    return res.status(400).send({ msg: "Delete failed!" });
+  }
+});
+
+// delete user (another)
+router.delete('/user/:id', auth, async (req, res) => {
+  try {
+    // validate user's type (admin)
+    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
+    
+
+    const originalUser = await User.findById(req.params.id);
+    // validate user
+    if (originalUser == null) return res.status(404).send({ msg: "User not found!" });
+
+    // verify if this account has company        
+    if (originalUser.companies != null && originalUser.companies.length > 0) {
+      // verify if this account is owner
+      await originalUser.companies.forEach(async element => {
+        if (element.role == 1) {
+          // delete company
+          await Company.deleteOne({ _id: element.company_id });
+        }
+      });
+    }
+
+    // delete user
+    await User.deleteOne({ _id: req.params.id });
+
+    return res.status(200).send({ msg: "User deleted!" });
+  } catch (error) {
     return res.status(400).send({ msg: "Delete failed!" });
   }
 });
