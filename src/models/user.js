@@ -12,6 +12,10 @@ const user = new Schema({
         required: true,
         select: false
     },
+    type:{
+        type: Number,
+        required:true
+    },
     companies: [{
         company_id: {type: Schema.ObjectId, ref:'company', required: true},
         role: {type: Number, required: true},
