@@ -91,4 +91,20 @@ router.get('/user', auth, async (req, res) => {
   }
 });
 
+// get user (all)
+router.get('/user_all', auth, async (req, res) => {
+  try {
+    // verify user's type
+    if(req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
+
+    // load user from DB
+    const users = await User.find();
+
+    // return user
+    return res.status(200).send({users});    
+  } catch (error) {    
+    return res.status(400).send({ msg: "Consult failed!" });
+  }
+});
+
 module.exports = (app) => app.use("/api", router);
