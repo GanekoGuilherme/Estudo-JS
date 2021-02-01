@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Company = require('../models/company');
-const login = require('../middleware/login');
+const auth = require('../middleware/auth');
 const User = require('../models/user');
 
 // create company (products and services are not obrigated) and registre on user
-router.post('/company',login, async (req, res) => {
+router.post('/company',auth, async (req, res) => {
     try {
       const company = {
         name: req.body.name || '',
@@ -54,7 +54,7 @@ router.post('/company',login, async (req, res) => {
       const companyCreated = await Company.create(company);    
       // update user's documents with company
       await User.updateOne({_id:company.token.idUser}, {$push: {companies: [{company_id: companyCreated._id, role:1}]}});
-      
+
       return res.status(200).send({ msg: "Company registred!" });
     } catch (error) {
       console.log(error);
