@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const User = require('../models/user');
+const Company = require('../models/company');
 const auth = require('../middleware/auth');
 
 // create user
@@ -46,10 +47,10 @@ router.put('/user', auth, async (req, res) => {
 
     // load original for comparation
     const originalUser = await User.findById(user.token.idUser);
-    
+
     // validate User's repeat
     // verify user's name changed    
-    if(originalUser.name !== user.name){
+    if (originalUser.name !== user.name) {
       // verify new user's name is valid
       verifyUser = await User.findOne({ name: user.name });
       console.log(verifyUser);
@@ -59,19 +60,19 @@ router.put('/user', auth, async (req, res) => {
     }
 
     // validate User's password
-    if (user.password.length > 0){
+    if (user.password.length > 0) {
       // overwrite user's password
       originalUser.password = await bcrypt.hash(user.password, 10);
-    } 
+    }
 
     // validate User's role (common or admin)
-    if (user.type >= 0 && user.type <= 1){
+    if (user.type >= 0 && user.type <= 1) {
       // overwrite user's type
       originalUser.type = user.type;
-    } 
+    }
 
     // update user
-    await User.updateOne({_id:user.token.idUser}, originalUser);
+    await User.updateOne({ _id: user.token.idUser }, originalUser);
     return res.status(200).send({ msg: "User updated!" });
   } catch (error) {
     return res.status(400).send({ msg: "Update user failed!" });
@@ -85,7 +86,7 @@ router.get('/user', auth, async (req, res) => {
     const user = await User.findById(req.user.idUser);
 
     // return user
-    return res.status(200).send({user});    
+    return res.status(200).send({ user });
   } catch (error) {
     return res.status(400).send({ msg: "Consult user failed!" });
   }
@@ -95,15 +96,39 @@ router.get('/user', auth, async (req, res) => {
 router.get('/user_all', auth, async (req, res) => {
   try {
     // verify user's type
-    if(req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
+    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
 
     // load user from DB
     const users = await User.find();
 
     // return user
-    return res.status(200).send({users});    
-  } catch (error) {    
+    return res.status(200).send({ users });
+  } catch (error) {
     return res.status(400).send({ msg: "Consult failed!" });
+  }
+});
+
+// delete user (own)
+router.delete('/user', auth, async (req, res) => {
+  try {
+    // verify if this account has company
+    const originalUser = await User.findById(req.user.idUser);
+    if(originalUser == null) return res.status(404).send({ msg: "User not found!" });
+    if (originalUser.companies != null && originalUser.companies.length > 0) {
+      // verify if this account is owner
+      await originalUser.companies.forEach(async element => {
+        if (element.role == 1) {
+          // delete company
+          await Company.deleteOne({_id:element.company_id});
+        }
+      });
+    }
+    // delete user
+    await User.deleteOne({ _id: req.user.idUser});
+    return res.status(200).send({ msg: "User deleted!" });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).send({ msg: "Delete failed!" });
   }
 });
 
