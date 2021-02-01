@@ -78,4 +78,17 @@ router.put('/user', auth, async (req, res) => {
   }
 });
 
+// get user (own)
+router.get('/user', auth, async (req, res) => {
+  try {
+    // load user from DB
+    const user = await User.findById(req.user.idUser);
+
+    // return user
+    return res.status(200).send({user});    
+  } catch (error) {
+    return res.status(400).send({ msg: "Consult user failed!" });
+  }
+});
+
 module.exports = (app) => app.use("/api", router);
