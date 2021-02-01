@@ -1,10 +1,8 @@
 const express = require('express');
 const Teste = require('./models/teste');
-const User = require('./models/user');
-const Company = require('./models/company');
 
 // import dotenv for test
-require('dotenv').config();
+// require('dotenv').config();
 
 const PORT = 3000;
 const HOST = '0.0.0.0';
