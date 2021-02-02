@@ -136,8 +136,7 @@ router.delete('/user', auth, async (req, res) => {
 router.delete('/user/:id', auth, async (req, res) => {
   try {
     // validate user's type (admin)
-    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
-    
+    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });    
 
     const originalUser = await User.findById(req.params.id);
     // validate user

@@ -22,8 +22,6 @@ router.post('/login', async (req, res) => {
       // consult MongoDB
       const resp = await User.findOne({name:user.name}).select('+password');
       
-      console.log(resp);
-
       // validate user's name
       if(resp == null) return res.status(401).send({ msg: "Authentication failure!" });
 
