@@ -94,14 +94,14 @@ router.get('/company/:id', auth, async (req, res) => {
   try {
     // load user from DB
     const user = await User.findById(req.user.idUser);
-    
+
     // verify user
     if (user == null) return res.status(404).send({ msg: "User not found!" });
 
     // verify user's type (adm)
     if (user.type) {
       // load company from DB
-      const company = await Company.findById(req.params.id);      
+      const company = await Company.findById(req.params.id);
 
       // validate company
       if (company == null) return res.status(404).send({ msg: "Company not found!" });
@@ -121,7 +121,7 @@ router.get('/company/:id', auth, async (req, res) => {
       }
     });
 
-  } catch (error) {    
+  } catch (error) {
     return res.status(400).send({ msg: "Consult company failed!" });
   }
 });
@@ -131,7 +131,7 @@ router.get('/company_all', auth, async (req, res) => {
   try {
     // load user from DB
     const user = await User.findById(req.user.idUser);
-    
+
     // verify user
     if (user == null) return res.status(404).send({ msg: "User not found!" });
 
@@ -142,11 +142,64 @@ router.get('/company_all', auth, async (req, res) => {
     const companies = await Company.find();
 
     // validate company 
-    if(companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
+    if (companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
 
     // return companies
     return res.status(200).send({ companies });
-  } catch (error) {    
+  } catch (error) {
+    return res.status(400).send({ msg: "Consult company failed!" });
+  }
+});
+
+// update company
+router.put('/company/:id', auth, async (req, res) => {
+  try {
+    // load company from body
+    const updateCompany = {
+      name: req.body.name || "",
+      cnpj: req.body.cnpj || ""
+    };
+
+    // load user from DB
+    const user = await User.findById(req.user.idUser);
+
+    // load company from DB
+    const originalCompany = await Company.findById(req.params.id);
+
+    // verify user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
+
+    // verify is user's MANAGER
+    let findCompany = false;
+    user.companies.forEach(element => {
+      // find
+      if (element.company_id == req.params.id) {
+        findCompany = true;
+      }
+    });
+
+    // verify user is not adm and didn't find company
+    if (user.type != 1 && findCompany == false) return res.status(404).send({ msg: "Company not found!" });
+
+    // validate company
+    // validate name
+    if (updateCompany.name.length > 100) return res.status(400).send({ msg: "Company's name is invalid!" });
+    // overwrite company's name
+    if (updateCompany.name.length > 0 && updateCompany.name != originalCompany.name) originalCompany.name = updateCompany.name;
+
+    // validate cnpj
+    if (updateCompany.cnpj.length > 14) return res.status(400).send({ msg: "Company's CNPJ is invalid!" });
+    if (updateCompany.cnpj.length > 0 && updateCompany.cnpj != originalCompany.cnpj) {
+      // verify is new company's CNPJ valid
+      const verifyCompanyCNPJ = await Company.findOne({ cnpj: updateCompany.cnpj });
+      if (verifyCompanyCNPJ != null) return res.status(400).send({ msg: "Company's cnpj is not disponible!" });
+      originalCompany.cnpj = updateCompany.cnpj;
+    }
+
+    // update company
+    await Company.updateOne({ _id: originalCompany._id }, originalCompany);
+    return res.status(200).send({ msg: "Company updated!", data: originalCompany });
+  } catch (error) {
     return res.status(400).send({ msg: "Consult company failed!" });
   }
 });
