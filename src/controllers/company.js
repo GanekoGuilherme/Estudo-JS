@@ -126,4 +126,29 @@ router.get('/company/:id', auth, async (req, res) => {
   }
 });
 
+// consult all company (restrict for adm)
+router.get('/company_all', auth, async (req, res) => {
+  try {
+    // load user from DB
+    const user = await User.findById(req.user.idUser);
+    
+    // verify user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
+
+    // verify user's type (adm)
+    if (user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
+
+    // load companies from DB
+    const companies = await Company.find();
+
+    // validate company 
+    if(companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
+
+    // return companies
+    return res.status(200).send({ companies });
+  } catch (error) {    
+    return res.status(400).send({ msg: "Consult company failed!" });
+  }
+});
+
 module.exports = (app) => app.use("/api", router);
