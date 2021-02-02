@@ -19,6 +19,9 @@ router.post('/company', auth, async (req, res) => {
     if (company.name.length < 1 || company.name.length > 100) return res.status(400).send({ msg: "Company's name is invalid!" });
     // validate cnpj
     if (company.cnpj.length < 1 || company.cnpj.length > 14) return res.status(400).send({ msg: "Company's CNPJ is invalid!" });
+    // validate cnpj repeat
+    const verifyCompanyCNPJ = await Company.findOne({ cnpj: company.cnpj });
+    if (verifyCompanyCNPJ != null) return res.status(400).send({ msg: "Company's CNPJ is not disponible!" });
 
     // validate product
     let isProductNameOk = true;
