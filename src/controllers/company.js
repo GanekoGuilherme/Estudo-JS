@@ -32,7 +32,7 @@ router.post('/company', auth, async (req, res) => {
 
         // validate services
         if (product.services != null && product.services.length > 0) {
-          product.services.forEach(service => {            
+          product.services.forEach(service => {
             // validate service's name
             if (service.name == null || service.name.length < 1) isServicesNameOk = false;
 
@@ -65,9 +65,9 @@ router.get('/company', auth, async (req, res) => {
   try {
     // load user from DB
     const user = await User.findById(req.user.idUser);
-    
-    // verify if user
-    if (user == null) return res.status(404).send({msg: "User not found!"});
+
+    // verify user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
 
     // verify if user has companies
     if (user.companies == null || user.companies.length < 1) return res.status(404).send({ msg: "Companies not found!" });
@@ -79,13 +79,50 @@ router.get('/company', auth, async (req, res) => {
       const consultCompany = await Company.find({ _id: element.company_id });
 
       // add in to array
-      companies.push({company: consultCompany, role: element.role == 1 ? 'MANAGER' : 'EMPLOYEE'});
-      
-      if(count == user.companies.length) return res.status(200).send({ companies });      
+      companies.push({ company: consultCompany, role: element.role == 1 ? 'MANAGER' : 'EMPLOYEE' });
+
+      if (count == user.companies.length) return res.status(200).send({ companies });
       count++;
     });
   } catch (error) {
     return res.status(400).send({ msg: "Consult companies failed!" });
+  }
+});
+
+// consult one company (and products/services)
+router.get('/company/:id', auth, async (req, res) => {
+  try {
+    // load user from DB
+    const user = await User.findById(req.user.idUser);
+    
+    // verify user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
+
+    // verify user's type (adm)
+    if (user.type) {
+      // load company from DB
+      const company = await Company.findById(req.params.id);      
+
+      // validate company
+      if (company == null) return res.status(404).send({ msg: "Company not found!" });
+      return res.status(200).send({ company });
+    }
+
+    // verify if user has companies
+    if (user.companies == null || user.companies.length < 1) return res.status(404).send({ msg: "Company not found!" });
+    user.companies.forEach(async element => {
+      // compare user's companies with request
+      if (element.company_id == req.params.id) {
+        const company = await Company.find({ _id: element.company_id });
+
+        // validate company
+        if (company == null) return res.status(404).send({ msg: "Company not found!" });
+        return res.status(200).send({ company });
+      }
+    });
+
+  } catch (error) {    
+    return res.status(400).send({ msg: "Consult company failed!" });
   }
 });
 

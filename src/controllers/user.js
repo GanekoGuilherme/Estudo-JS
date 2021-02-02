@@ -41,9 +41,11 @@ router.put('/user', auth, async (req, res) => {
     const user = {
       name: req.body.name || '',
       password: req.body.password || '',
-      type: req.body.type || -1,
+      type: req.body.type,
       token: req.user || ''
     }
+
+    console.log(user);
 
     // load original for comparation
     const originalUser = await User.findById(user.token.idUser);
@@ -53,7 +55,7 @@ router.put('/user', auth, async (req, res) => {
     if (originalUser.name !== user.name) {
       // verify new user's name is valid
       verifyUser = await User.findOne({ name: user.name });
-      console.log(verifyUser);
+      
       if (verifyUser != null) return res.status(400).send({ msg: "User's name is not disponible!" });
       // overwrite user's name
       originalUser.name = user.name;
