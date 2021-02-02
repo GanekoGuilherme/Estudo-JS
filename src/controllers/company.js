@@ -54,7 +54,7 @@ router.post('/company', auth, async (req, res) => {
     // update user's documents with company
     await User.updateOne({ _id: company.token.idUser }, { $push: { companies: [{ company_id: companyCreated._id, role: 1 }] } });
 
-    return res.status(200).send({ msg: "Company registred!" });
+    return res.status(200).send({ msg: "Company registred!", data: companyCreated });
   } catch (error) {
     return res.status(400).send({ msg: "Company registration failure!" });
   }

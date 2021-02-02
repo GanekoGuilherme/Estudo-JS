@@ -19,7 +19,7 @@ router.post('/user', async (req, res) => {
 
     // validate User's repeat
     verifyUser = await User.findOne({ name: user.name });
-    console.log(verifyUser);
+    
     if (verifyUser != null) return res.status(400).send({ msg: "User's name is not disponible!" });
 
     // validate User's password
@@ -44,8 +44,6 @@ router.put('/user', auth, async (req, res) => {
       type: req.body.type,
       token: req.user || ''
     }
-
-    console.log(user);
 
     // load original for comparation
     const originalUser = await User.findById(user.token.idUser);
@@ -75,7 +73,10 @@ router.put('/user', auth, async (req, res) => {
 
     // update user
     await User.updateOne({ _id: user.token.idUser }, originalUser);
-    return res.status(200).send({ msg: "User updated!" });
+
+    // reset password for security
+    originalUser.password = undefined;
+    return res.status(200).send({ msg: "User updated!", data: originalUser});
   } catch (error) {
     return res.status(400).send({ msg: "Update user failed!" });
   }
