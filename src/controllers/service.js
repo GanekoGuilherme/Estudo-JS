@@ -98,8 +98,8 @@ router.post('/service', auth, async (req, res) => {
     }
 });
 
-// consult products (and services) by company
-router.get('/products_by_company/:id', auth, async (req, res) => {
+// consult service by company
+router.get('/services_by_company/:id', auth, async (req, res) => {
     try {
         // load company from DB
         const company = await Company.findOne({ _id: req.params.id });
@@ -123,11 +123,15 @@ router.get('/products_by_company/:id', auth, async (req, res) => {
             });
         }
 
-        // validate if this account can consult products (belong the company or is admin)
+        // validate if this account can consult services (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
-        // consult product (and services)
-        data = await Company.findOne({ _id: req.params.id });
+        // consult services
+        dataRaw = await Company.findOne({ _id: req.params.id });
+        data = [];
+        dataRaw.products.forEach(element => {
+            data.push(element.services);
+        });
         return res.status(200).send({ data: data });
     } catch (error) {
         return res.status(400).send({ msg: "Consult products failed!" });
