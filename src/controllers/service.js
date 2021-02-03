@@ -175,7 +175,6 @@ router.get('/service/:id', auth, async (req, res) => {
         });
         return res.status(200).send({ data: data });
     } catch (error) {
-        console.log(error);
         return res.status(400).send({ msg: "Consult service failed!" });
     }
 });
@@ -310,23 +309,21 @@ router.put('/service/:id', auth, async (req, res) => {
             doc.save();
             return res.status(200).send({ msg: "Service registred!", data: originalService });
         }).catch(err => {
-            console.log(err);
             return res.status(400).send({ msg: "Update service failed!" });
         });
     } catch (error) {
-        console.log(error);
         return res.status(400).send({ msg: "Update service failed!" });
     }
 });
 
-// delete product
-router.delete('/product/:id', auth, async (req, res) => {
+// delete service
+router.delete('/service/:id', auth, async (req, res) => {
     try {
         // load company from DB        
-        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
+        const company = await Company.findOne({ 'products.services._id': req.params.id });
 
         // validate company
-        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+        if (company == null) return res.status(404).send({ msg: "Service not found!" });
 
         // load user from DB
         const user = await User.findById(req.user.idUser);
@@ -344,15 +341,37 @@ router.delete('/product/:id', auth, async (req, res) => {
             });
         }
 
-        // validate if this account can delete products (belong the company or is admin)
+        // validate if this account can delete service (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
-        // update array (products) from company (without the current product)
-        await Company.updateOne({ _id: company._id }, { $pull: { products: { _id: req.params.id } } });
+        // identify product's id
+        var product_id = 0;
+        company.products.forEach(product => {
+            product.services.forEach(serv => {
+                if (serv._id == req.params.id) {
+                    originalService = serv;
+                    product_id = product._id;
+                }
+            });
+        });
 
-        return res.status(200).send({ msg: "Product deleted!" });
+        // update array (services) from company (without the current service)
+        // find service
+        Company.findOne({ _id: company._id }).then(doc => {
+            // get element for change
+            item = doc.products.id(product_id);
+
+            // remove services
+            item["services"].remove(req.params.id);
+
+            // save alterations
+            doc.save();
+            return res.status(200).send({ msg: "Service deleted!"});
+        }).catch(err => {            
+            return res.status(400).send({ msg: "Delete service failed!" });
+        });
     } catch (error) {
-        return res.status(400).send({ msg: "Deleted company failed!" });
+        return res.status(400).send({ msg: "Deleted service failed!" });
     }
 });
 
