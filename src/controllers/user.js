@@ -30,7 +30,7 @@ router.post('/user', async (req, res) => {
 
     await User.create(user);
     return res.status(200).send({ msg: "User registred!" });
-  } catch (error) {
+  } catch (error) {    
     return res.status(400).send({ msg: "There are fields invalids!" });
   }
 });
