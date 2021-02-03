@@ -52,12 +52,12 @@ router.post('/service', auth, async (req, res) => {
         var index = 0;
         var indexProductCurrent = 0;
         company.products.forEach(product => {
-            if(product._id == service.product_id){
+            if (product._id == service.product_id) {
                 indexProductCurrent = index;
             }
             index++;
         });
-        
+
         // validate service's name
         if (service.name == null || service.name.length < 1) isServicesNameOk = false;
 
@@ -84,16 +84,16 @@ router.post('/service', auth, async (req, res) => {
         // find product
         Company.findOne({ _id: company._id }).then(doc => {
             // get element for change
-            item = doc.products.id(service.product_id);    
+            item = doc.products.id(service.product_id);
             // push service
-            item["services"].push({name: service.name, description:service.description, value:service.value});
+            item["services"].push({ name: service.name, description: service.description, value: service.value });
             // save alterations
-            doc.save();   
-            return res.status(200).send({ msg: "Service registred!", data:doc.products[indexProductCurrent]});
+            doc.save();
+            return res.status(200).send({ msg: "Service registred!", data: doc.products[indexProductCurrent] });
         }).catch(err => {
             return res.status(400).send({ msg: "Service registred failed!" });
-        });                
-    } catch (error) {        
+        });
+    } catch (error) {
         return res.status(400).send({ msg: "Service registred failure!" });
     }
 });
@@ -134,18 +134,18 @@ router.get('/services_by_company/:id', auth, async (req, res) => {
         });
         return res.status(200).send({ data: data });
     } catch (error) {
-        return res.status(400).send({ msg: "Consult products failed!" });
+        return res.status(400).send({ msg: "Consult service failed!" });
     }
 });
 
-// consult products (and services) by product's id
-router.get('/product/:id', auth, async (req, res) => {
+// consult services by service's id
+router.get('/service/:id', auth, async (req, res) => {
     try {
         // load company from DB        
-        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
-
+        const company = await Company.findOne({ 'products.services._id':req.params.id});
+        
         // validate company
-        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+        if (company == null) return res.status(404).send({ msg: "Service not found!" });
 
         // load user from DB
         const user = await User.findById(req.user.idUser);
@@ -163,17 +163,20 @@ router.get('/product/:id', auth, async (req, res) => {
             });
         }
 
-        // validate if this account can consult products (belong the company or is admin)
+        // validate if this account can consult services (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
-        // consult product (and services)
+        // consult service
         var data;
         company.products.forEach(element => {
-            if (element._id == req.params.id) data = element;
+            element.services.forEach(service => {
+                if (service._id == req.params.id) data = service;
+            });
         });
         return res.status(200).send({ data: data });
     } catch (error) {
-        return res.status(400).send({ msg: "Consult products failed!" });
+        console.log(error);
+        return res.status(400).send({ msg: "Consult service failed!" });
     }
 });
 
