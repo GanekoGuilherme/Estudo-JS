@@ -157,45 +157,8 @@ router.get('/product/:id', auth, async (req, res) => {
     }
 });
 
-// consult one company (and products/services)
-router.get('/company/:id', auth, async (req, res) => {
-    try {
-        // load user from DB
-        const user = await User.findById(req.user.idUser);
-
-        // verify user
-        if (user == null) return res.status(404).send({ msg: "User not found!" });
-
-        // verify user's type (adm)
-        if (user.type) {
-            // load company from DB
-            const company = await Company.findById(req.params.id);
-
-            // validate company
-            if (company == null) return res.status(404).send({ msg: "Company not found!" });
-            return res.status(200).send({ company });
-        }
-
-        // verify if user has companies
-        if (user.companies == null || user.companies.length < 1) return res.status(404).send({ msg: "Company not found!" });
-        user.companies.forEach(async element => {
-            // compare user's companies with request
-            if (element.company_id == req.params.id) {
-                const company = await Company.find({ _id: element.company_id });
-
-                // validate company
-                if (company == null) return res.status(404).send({ msg: "Company not found!" });
-                return res.status(200).send({ company });
-            }
-        });
-
-    } catch (error) {
-        return res.status(400).send({ msg: "Consult company failed!" });
-    }
-});
-
-// consult all company (restrict for adm)
-router.get('/company_all', auth, async (req, res) => {
+// consult all product (restrict for adm)
+router.get('/product_all', auth, async (req, res) => {
     try {
         // load user from DB
         const user = await User.findById(req.user.idUser);
@@ -211,11 +174,23 @@ router.get('/company_all', auth, async (req, res) => {
 
         // validate company 
         if (companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
+        
+        // load products from companies
+        let products = [];
+        
+        companies.forEach(company => {
+            company.products.forEach(product => {                
+                // products.push({company: company.name, cnpj: company.cnpj, product: product});    // this line show (company's name, cnpj and products)
+                products.push({product: product});  // this line show only products
+            });
+        }); 
+
+        if (products == null || products.length < 1) return res.status(404).send({ msg: "There aren't products!" });
 
         // return companies
-        return res.status(200).send({ companies });
+        return res.status(200).send({ products });
     } catch (error) {
-        return res.status(400).send({ msg: "Consult company failed!" });
+        return res.status(400).send({ msg: "Consult product failed!" });
     }
 });
 
