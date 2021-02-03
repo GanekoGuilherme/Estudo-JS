@@ -231,8 +231,7 @@ router.get('/service_own', auth, async (req, res) => {
         var companiesFilter = [];
         user.companies.forEach(element => {
             companiesFilter.push(element.company_id);
-        });;
-        console.log(companiesFilter);
+        });
 
         // load companies from DB
         const companies = await Company.find({'_id':{$in:companiesFilter}});

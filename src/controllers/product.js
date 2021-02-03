@@ -194,6 +194,48 @@ router.get('/product_all', auth, async (req, res) => {
     }
 });
 
+// consult all product belong this user (auth)
+router.get('/product_own', auth, async (req, res) => {
+    try {
+        // load user from DB
+        const user = await User.findById(req.user.idUser);
+
+        // verify user
+        if (user == null) return res.status(404).send({ msg: "User not found!" });
+
+        // verify user's type (adm)
+        if (user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
+
+        var companiesFilter = [];
+        user.companies.forEach(element => {
+            companiesFilter.push(element.company_id);
+        });
+        
+        // load companies from DB
+        const companies = await Company.find({'_id':{$in:companiesFilter}});
+
+        // validate company 
+        if (companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
+
+        // load products from companies
+        let products = [];
+
+        companies.forEach(company => {
+            company.products.forEach(product => {
+                // products.push({company: company.name, cnpj: company.cnpj, product: product});    // this line show (company's name, cnpj and products)
+                products.push({ product: product });  // this line show only products
+            });
+        });
+
+        if (products == null || products.length < 1) return res.status(404).send({ msg: "There aren't products!" });
+
+        // return companies
+        return res.status(200).send({ products });
+    } catch (error) {
+        return res.status(400).send({ msg: "Consult product failed!" });
+    }
+});
+
 // update product
 router.put('/product/:id', auth, async (req, res) => {
     try {
