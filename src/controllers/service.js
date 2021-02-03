@@ -180,8 +180,8 @@ router.get('/service/:id', auth, async (req, res) => {
     }
 });
 
-// consult all product (restrict for adm)
-router.get('/product_all', auth, async (req, res) => {
+// consult all services (restrict for adm)
+router.get('/service_all', auth, async (req, res) => {
     try {
         // load user from DB
         const user = await User.findById(req.user.idUser);
@@ -199,21 +199,21 @@ router.get('/product_all', auth, async (req, res) => {
         if (companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
 
         // load products from companies
-        let products = [];
+        let services = [];
 
         companies.forEach(company => {
             company.products.forEach(product => {
                 // products.push({company: company.name, cnpj: company.cnpj, product: product});    // this line show (company's name, cnpj and products)
-                products.push({ product: product });  // this line show only products
+                services.push({ service: product.services });  // this line show only services
             });
         });
 
-        if (products == null || products.length < 1) return res.status(404).send({ msg: "There aren't products!" });
+        if (services == null || services.length < 1) return res.status(404).send({ msg: "There aren't services!" });
 
         // return companies
-        return res.status(200).send({ products });
+        return res.status(200).send({ services });
     } catch (error) {
-        return res.status(400).send({ msg: "Consult product failed!" });
+        return res.status(400).send({ msg: "Consult services failed!" });
     }
 });
 
