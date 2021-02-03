@@ -234,7 +234,6 @@ router.delete('/company/:id', auth, async (req, res) => {
     // delete own company
     if (findCompany) {
       // update array companies from users
-      // update user's documents with company
       await User.updateOne({ _id: req.user.idUser }, { $pull: { companies: { company_id: req.params.id } } });
     } else {
       // delete another company

@@ -230,7 +230,7 @@ router.put('/product/:id', auth, async (req, res) => {
             });
         }
 
-        // validate if this account can consult products (belong the company or is admin)
+        // validate if this account can update products (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
         // validate product's name
@@ -244,64 +244,56 @@ router.put('/product/:id', auth, async (req, res) => {
             originalProduct.name = updateProduct.name;
 
             // find product
-            Company.findOne({_id: company._id}).then(doc => {
+            Company.findOne({ _id: company._id }).then(doc => {
                 item = doc.products.id(req.params.id);  // get element for change
                 item["name"] = originalProduct.name;    // overwrite product's name
                 doc.save();                             // save alterations
-            }).catch(err => {                
+            }).catch(err => {
                 return res.status(400).send({ msg: "Update product failed!" });
             });
 
             // return product updated
             return res.status(200).send({ msg: "Product updated!", data: originalProduct });
-        } else{
+        } else {
             return res.status(400).send({ msg: "No product changes!" });
         }
-    } catch (error) {
-        console.log(error);
+    } catch (error) {        
         return res.status(400).send({ msg: "Update product failed!" });
     }
 });
 
-// update company
-router.delete('/company/:id', auth, async (req, res) => {
+// delete product
+router.delete('/product/:id', auth, async (req, res) => {
     try {
-
-        // load user from DB
-        const user = await User.findById(req.user.idUser);
-        // verify user
-        if (user == null) return res.status(404).send({ msg: "User not found!" });
-
-        // load company from DB
-        const originalCompany = await Company.findById(req.params.id);
+        // load company from DB        
+        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
 
         // validate company
-        if (originalCompany == null) return res.status(404).send({ msg: "Company not found!" });
+        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+       
+        // load user from DB
+        const user = await User.findById(req.user.idUser);
 
-        //verify delete own company
-        let findCompany = false;
-        user.companies.forEach(element => {
-            if (element.company_id == req.params.id) findCompany = true;
-        });
-
-        // verify user is not adm and didn't find company
-        if (user.type != 1 && findCompany == false) return res.status(404).send({ msg: "Company not found!" });
-
-        // delete own company
-        if (findCompany) {
-            // update array companies from users
-            // update user's documents with company
-            await User.updateOne({ _id: req.user.idUser }, { $pull: { companies: { company_id: req.params.id } } });
-        } else {
-            // delete another company
-            // find user's linked with company    
-            const usersNeedUpdate = await User.findOne({ companies: { $elemMatch: { company_id: req.params.id } } });
-            await User.updateOne({ _id: usersNeedUpdate._id }, { $pull: { companies: { company_id: req.params.id } } });
+        // validate has permission
+        let hasPermission = false;
+        if (user.type != 1) {
+            user.companies.forEach(element => {
+                if (element.company_id == company.id) {
+                    // OBS: in this case, role 0 and 1 (EMPLOYEE and MANAGER) has permission for register product
+                    if (element.role == 0 || element.role == 1) {
+                        hasPermission = true;
+                    }
+                }
+            });
         }
 
-        // delete company from DB
-        await Company.deleteOne({ _id: req.params.id });
-        return res.status(200).send({ msg: "Company deleted!" });
+        // validate if this account can delete products (belong the company or is admin)
+        if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
+
+        // update array (products) from company (without the current product)
+        await Company.updateOne({ _id: company._id }, { $pull: { products: { _id: req.params.id } } });
+        
+        return res.status(200).send({ msg: "Product deleted!"});
     } catch (error) {
         return res.status(400).send({ msg: "Deleted company failed!" });
     }
