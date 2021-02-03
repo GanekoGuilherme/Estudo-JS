@@ -38,7 +38,7 @@ router.post('/product', auth, async (req, res) => {
             });
         }
 
-        // validate if this account can register product (belgon the company or is admin)
+        // validate if this account can register product (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
         // validate product
@@ -82,32 +82,39 @@ router.post('/product', auth, async (req, res) => {
     }
 });
 
-// consult companies (and products/services)
-router.get('/company', auth, async (req, res) => {
+// consult products (and services) by company
+router.get('/products_by_company/:id', auth, async (req, res) => {
     try {
+        // load company from DB
+        const company = await Company.findOne({ _id: req.params.id });
+
+        // validate company
+        if (company == null) return res.status(404).send({ msg: "Company not found!" });
+
         // load user from DB
         const user = await User.findById(req.user.idUser);
 
-        // verify user
-        if (user == null) return res.status(404).send({ msg: "User not found!" });
+        // validate has permission
+        let hasPermission = false;
+        if (user.type != 1) {
+            user.companies.forEach(element => {
+                if (element.company_id == company.id) {
+                    // OBS: in this case, role 0 and 1 (EMPLOYEE and MANAGER) has permission for register product
+                    if (element.role == 0 || element.role == 1) {
+                        hasPermission = true;
+                    }
+                }
+            });
+        }
 
-        // verify if user has companies
-        if (user.companies == null || user.companies.length < 1) return res.status(404).send({ msg: "Companies not found!" });
-
-        var companies = []; //resp of consult
-        var count = 1;      //count for loop
-        user.companies.forEach(async element => {
-            // consult company for id
-            const consultCompany = await Company.find({ _id: element.company_id });
-
-            // add in to array
-            companies.push({ company: consultCompany, role: element.role == 1 ? 'MANAGER' : 'EMPLOYEE' });
-
-            if (count == user.companies.length) return res.status(200).send({ companies });
-            count++;
-        });
+        // validate if this account can consult products (belong the company or is admin)
+        if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
+        
+        // consult product (and services)
+        data = await Company.findOne({ _id: req.params.id });
+        return res.status(200).send({ data: data });
     } catch (error) {
-        return res.status(400).send({ msg: "Consult companies failed!" });
+        return res.status(400).send({ msg: "Consult products failed!" });
     }
 });
 
