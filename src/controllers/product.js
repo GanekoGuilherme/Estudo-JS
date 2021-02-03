@@ -77,7 +77,7 @@ router.post('/product', auth, async (req, res) => {
         await Company.updateOne({ _id: product.company_id }, { $push: { products: [{ name: product.name, services: product.services }] } });
         data = await Company.findOne({ _id: product.company_id });
         return res.status(200).send({ msg: "Product registred!", data: data });
-    } catch (error) {        
+    } catch (error) {
         return res.status(400).send({ msg: "Product registration failure!" });
     }
 });
@@ -109,7 +109,7 @@ router.get('/products_by_company/:id', auth, async (req, res) => {
 
         // validate if this account can consult products (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
-        
+
         // consult product (and services)
         data = await Company.findOne({ _id: req.params.id });
         return res.status(200).send({ data: data });
@@ -123,7 +123,7 @@ router.get('/product/:id', auth, async (req, res) => {
     try {
         // load company from DB        
         const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
-        
+
         // validate company
         if (company == null) return res.status(404).send({ msg: "Product not found!" });
 
@@ -145,14 +145,14 @@ router.get('/product/:id', auth, async (req, res) => {
 
         // validate if this account can consult products (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
-        
+
         // consult product (and services)
-        var data;        
+        var data;
         company.products.forEach(element => {
-            if(element._id == req.params.id) data = element;            
+            if (element._id == req.params.id) data = element;
         });
         return res.status(200).send({ data: data });
-    } catch (error) {        
+    } catch (error) {
         return res.status(400).send({ msg: "Consult products failed!" });
     }
 });
@@ -174,16 +174,16 @@ router.get('/product_all', auth, async (req, res) => {
 
         // validate company 
         if (companies == null || companies.length < 1) return res.status(404).send({ msg: "There aren't companies!" });
-        
+
         // load products from companies
         let products = [];
-        
+
         companies.forEach(company => {
-            company.products.forEach(product => {                
+            company.products.forEach(product => {
                 // products.push({company: company.name, cnpj: company.cnpj, product: product});    // this line show (company's name, cnpj and products)
-                products.push({product: product});  // this line show only products
+                products.push({ product: product });  // this line show only products
             });
-        }); 
+        });
 
         if (products == null || products.length < 1) return res.status(404).send({ msg: "There aren't products!" });
 
@@ -194,56 +194,72 @@ router.get('/product_all', auth, async (req, res) => {
     }
 });
 
-// update company
-router.put('/company/:id', auth, async (req, res) => {
+// update product
+router.put('/product/:id', auth, async (req, res) => {
     try {
         // load company from body
-        const updateCompany = {
+        const updateProduct = {
             name: req.body.name || "",
-            cnpj: req.body.cnpj || ""
         };
+
+        // load company from DB        
+        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
+
+        // validate company
+        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+
+        // load original product
+        let originalProduct = null;
+        company.products.forEach(product => {
+            if (product._id == req.params.id) originalProduct = product;
+        });
 
         // load user from DB
         const user = await User.findById(req.user.idUser);
 
-        // load company from DB
-        const originalCompany = await Company.findById(req.params.id);
-
-        // verify user
-        if (user == null) return res.status(404).send({ msg: "User not found!" });
-
-        // verify is user's MANAGER
-        let findCompany = false;
-        user.companies.forEach(element => {
-            // find
-            if (element.company_id == req.params.id) {
-                findCompany = true;
-            }
-        });
-
-        // verify user is not adm and didn't find company
-        if (user.type != 1 && findCompany == false) return res.status(404).send({ msg: "Company not found!" });
-
-        // validate company
-        // validate name
-        if (updateCompany.name.length > 100) return res.status(400).send({ msg: "Company's name is invalid!" });
-        // overwrite company's name
-        if (updateCompany.name.length > 0 && updateCompany.name != originalCompany.name) originalCompany.name = updateCompany.name;
-
-        // validate cnpj
-        if (updateCompany.cnpj.length > 14) return res.status(400).send({ msg: "Company's CNPJ is invalid!" });
-        if (updateCompany.cnpj.length > 0 && updateCompany.cnpj != originalCompany.cnpj) {
-            // verify is new company's CNPJ valid
-            const verifyCompanyCNPJ = await Company.findOne({ cnpj: updateCompany.cnpj });
-            if (verifyCompanyCNPJ != null) return res.status(400).send({ msg: "Company's cnpj is not disponible!" });
-            originalCompany.cnpj = updateCompany.cnpj;
+        // validate has permission
+        let hasPermission = false;
+        if (user.type != 1) {
+            user.companies.forEach(element => {
+                if (element.company_id == company.id) {
+                    // OBS: in this case, role 0 and 1 (EMPLOYEE and MANAGER) has permission for register product
+                    if (element.role == 0 || element.role == 1) {
+                        hasPermission = true;
+                    }
+                }
+            });
         }
 
-        // update company
-        await Company.updateOne({ _id: originalCompany._id }, originalCompany);
-        return res.status(200).send({ msg: "Company updated!", data: originalCompany });
+        // validate if this account can consult products (belong the company or is admin)
+        if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
+
+        // validate product's name
+        if (updateProduct.name.length < 1 || updateProduct.name.length > 50) return res.status(400).send({ msg: "Product's name is invalid!" });
+        // validate product's name repeat
+        if (updateProduct.name != originalProduct.name) {
+            const verifyProductName = await Company.findOne({ products: { $elemMatch: { name: updateProduct.name } } });
+            if (verifyProductName != null) return res.status(400).send({ msg: "Product's name is not disponible!" });
+
+            // update product
+            originalProduct.name = updateProduct.name;
+
+            // find product
+            Company.findOne({_id: company._id}).then(doc => {
+                item = doc.products.id(req.params.id);  // get element for change
+                item["name"] = originalProduct.name;    // overwrite product's name
+                doc.save();                             // save alterations
+            }).catch(err => {                
+                return res.status(400).send({ msg: "Update product failed!" });
+            });
+
+            // return product updated
+            return res.status(200).send({ msg: "Product updated!", data: originalProduct });
+        } else{
+            return res.status(400).send({ msg: "No product changes!" });
+        }
     } catch (error) {
-        return res.status(400).send({ msg: "Consult company failed!" });
+        console.log(error);
+        return res.status(400).send({ msg: "Update product failed!" });
     }
 });
 
@@ -258,7 +274,7 @@ router.delete('/company/:id', auth, async (req, res) => {
 
         // load company from DB
         const originalCompany = await Company.findById(req.params.id);
-        
+
         // validate company
         if (originalCompany == null) return res.status(404).send({ msg: "Company not found!" });
 

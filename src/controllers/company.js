@@ -207,7 +207,7 @@ router.put('/company/:id', auth, async (req, res) => {
   }
 });
 
-// update company
+// delete company
 router.delete('/company/:id', auth, async (req, res) => {
   try {
 
