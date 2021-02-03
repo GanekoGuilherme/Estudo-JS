@@ -99,7 +99,7 @@ router.get('/user', auth, async (req, res) => {
 router.get('/user_all', auth, async (req, res) => {
   try {
     // verify user's type
-    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });
+    if (req.user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
     // load user from DB
     const users = await User.find();
@@ -139,7 +139,7 @@ router.delete('/user', auth, async (req, res) => {
 router.delete('/user/:id', auth, async (req, res) => {
   try {
     // validate user's type (admin)
-    if (req.user.type != 1) return res.status(401).send({ msg: "User has not permission!" });    
+    if (req.user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });    
 
     const originalUser = await User.findById(req.params.id);
     // validate user

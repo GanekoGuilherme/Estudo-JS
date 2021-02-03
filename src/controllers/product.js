@@ -4,65 +4,59 @@ const Company = require('../models/company');
 const auth = require('../middleware/auth');
 const User = require('../models/user');
 
-// create company (products and services are not obrigated) and registre on user
-router.post('/company', auth, async (req, res) => {
+// create product and registre on company
+router.post('/product', auth, async (req, res) => {
   try {
-    const company = {
-      name: req.body.name || '',
-      cnpj: req.body.cnpj || '',
-      token: req.user || '',
-      products: req.body.products
+    const product = {
+        company_id: req.body.company_id || '',
+        name: req.body.name || '',
     }
+
+    // load company from DB
+    const company = await Company.findOne({_id:product.company_id});
 
     // validate company
-    // validate name
-    if (company.name.length < 1 || company.name.length > 100) return res.status(400).send({ msg: "Company's name is invalid!" });
-    // validate cnpj
-    if (company.cnpj.length < 1 || company.cnpj.length > 14) return res.status(400).send({ msg: "Company's CNPJ is invalid!" });
-    // validate cnpj repeat
-    const verifyCompanyCNPJ = await Company.findOne({ cnpj: company.cnpj });
-    if (verifyCompanyCNPJ != null) return res.status(400).send({ msg: "Company's CNPJ is not disponible!" });
+    if (company == null) return res.status(404).send({ msg: "Company not found!" });
 
-    // validate product
-    let isProductNameOk = true;
-    let isServicesNameOk = true;
-    let isServicesValueOk = true;
-    if (company.products != null && company.products.length > 0) {
-      company.products.forEach(product => {
+    // load user from DB
+    const user = await User.findOne({_id:req.user.idUser});
 
-        // validate product's name
-        if (product.name == null || product.name.length < 1 || product.name.length > 50) isProductNameOk = false;
+    // validate user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
 
-        // validate services
-        if (product.services != null && product.services.length > 0) {
-          product.services.forEach(service => {
-            // validate service's name
-            if (service.name == null || service.name.length < 1) isServicesNameOk = false;
-
-            // validate product's value
-            // var maskDecimal = "/^[-+]?[0-9]+\.[0-9]+$/";            
-            if (service.value == null || service.value < 0.00) isServicesValueOk = false;
-          });
-        }
-      });
+    // validate has permission
+    let hasPermission = false;
+    if(user.type != 1){        
+        user.companies.forEach(element => {            
+            if(element.company_id == company.id){
+                // OBS: in this case, role 0 and 1 (EMPLOYEE and MANAGER) has permission for register product
+                if(element.role == 0 || element.role == 1){
+                    hasPermission = true;
+                }
+            }
+        });
     }
 
-    // ends registration with error
-    if (!isProductNameOk) return res.status(400).send({ msg: "Product's name is invalid!" });
-    if (!isServicesNameOk) return res.status(400).send({ msg: "Service's name is invalid!" });
-    if (!isServicesValueOk) return res.status(400).send({ msg: "Service's value is invalid!" });
+    // validate if this account can register product (belgon the company or is admin)
+    if(hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
-    // register on DB company
-    const companyCreated = await Company.create(company);
-    // update user's documents with company
-    await User.updateOne({ _id: company.token.idUser }, { $push: { companies: [{ company_id: companyCreated._id, role: 1 }] } });
+    // validate product
+    // validate name
+    if (product.name.length < 1 || product.name.length > 50) return res.status(400).send({ msg: "Product's name is invalid!" });    
+    // validate product's name repeat
+    const verifyProductName = await Company.findOne({ products: { $elemMatch: { name: product.name } } });
+    if (verifyProductName != null) return res.status(400).send({ msg: "Product's name is not disponible!" });
 
-    return res.status(200).send({ msg: "Company registred!", data: companyCreated });
+    // update company with the new product
+    await Company.updateOne({_id: product.company_id}, {$push: { products: [{ name: product.name, services: [] }] } });
+    data = await Company.findOne({_id:product.company_id});
+    return res.status(200).send({ msg: "Product registred!", data: data });
   } catch (error) {
-    return res.status(400).send({ msg: "Company registration failure!" });
+    return res.status(400).send({ msg: "Product registration failure!" });
   }
 });
 
+//continuar aqui
 // consult companies (and products/services)
 router.get('/company', auth, async (req, res) => {
   try {
@@ -218,7 +212,7 @@ router.delete('/company/:id', auth, async (req, res) => {
 
     // load company from DB
     const originalCompany = await Company.findById(req.params.id);
-    
+    console.log(req.params.id);
     // validate company
     if (originalCompany == null) return res.status(404).send({ msg: "Company not found!" });
 
@@ -247,7 +241,7 @@ router.delete('/company/:id', auth, async (req, res) => {
     await Company.deleteOne({ _id: req.params.id });
     return res.status(200).send({ msg: "Company deleted!" });
   } catch (error) {
-    return res.status(400).send({ msg: "Consult company failed!" });
+    return res.status(400).send({ msg: "Deleted company failed!" });
   }
 });
 
