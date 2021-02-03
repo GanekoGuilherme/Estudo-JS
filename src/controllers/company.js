@@ -207,4 +207,49 @@ router.put('/company/:id', auth, async (req, res) => {
   }
 });
 
+// update company
+router.delete('/company/:id', auth, async (req, res) => {
+  try {
+
+    // load user from DB
+    const user = await User.findById(req.user.idUser);
+    // verify user
+    if (user == null) return res.status(404).send({ msg: "User not found!" });
+
+    // load company from DB
+    const originalCompany = await Company.findById(req.params.id);
+    console.log(req.params.id);
+    // validate company
+    if (originalCompany == null) return res.status(404).send({ msg: "Company not found!" });
+
+    //verify delete own company
+    let findCompany = false;
+    user.companies.forEach(element => {
+      if (element.company_id == req.params.id) findCompany = true;
+    });
+
+    // verify user is not adm and didn't find company
+    if (user.type != 1 && findCompany == false) return res.status(404).send({ msg: "Company not found!" });
+
+    // delete own company
+    if (findCompany) {
+      // update array companies from users
+      // update user's documents with company
+      await User.updateOne({ _id: req.user.idUser }, { $pull: { companies: { company_id: req.params.id } } });
+    } else {
+      // delete another company
+      // find user's linked with company    
+      const usersNeedUpdate = await User.findOne({ companies: { $elemMatch: { company_id: req.params.id } } });
+      await User.updateOne({ _id: usersNeedUpdate._id }, { $pull: { companies: { company_id: req.params.id } } });
+    }
+
+    // delete company from DB
+    await Company.deleteOne({ _id: req.params.id });
+    return res.status(200).send({ msg: "Company deleted!" });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).send({ msg: "Consult company failed!" });
+  }
+});
+
 module.exports = (app) => app.use("/api", router);
