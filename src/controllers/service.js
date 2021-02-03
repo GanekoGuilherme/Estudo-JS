@@ -142,8 +142,8 @@ router.get('/services_by_company/:id', auth, async (req, res) => {
 router.get('/service/:id', auth, async (req, res) => {
     try {
         // load company from DB        
-        const company = await Company.findOne({ 'products.services._id':req.params.id});
-        
+        const company = await Company.findOne({ 'products.services._id': req.params.id });
+
         // validate company
         if (company == null) return res.status(404).send({ msg: "Service not found!" });
 
@@ -217,24 +217,32 @@ router.get('/service_all', auth, async (req, res) => {
     }
 });
 
-// update product
-router.put('/product/:id', auth, async (req, res) => {
+// update service
+router.put('/service/:id', auth, async (req, res) => {
     try {
         // load company from body
-        const updateProduct = {
-            name: req.body.name || "",
+        const updateService = {
+            name: req.body.name || '',
+            description: req.body.description || '',
+            value: req.body.value
         };
 
         // load company from DB        
-        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
+        const company = await Company.findOne({ 'products.services._id': req.params.id });
 
         // validate company
-        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+        if (company == null) return res.status(404).send({ msg: "Service not found!" });
 
-        // load original product
-        let originalProduct = null;
+        // load original service
+        let originalService = null;
+        var product_id = 0;
         company.products.forEach(product => {
-            if (product._id == req.params.id) originalProduct = product;
+            product.services.forEach(serv => {
+                if (serv._id == req.params.id) {
+                    originalService = serv;
+                    product_id = product._id;
+                }
+            });
         });
 
         // load user from DB
@@ -256,32 +264,58 @@ router.put('/product/:id', auth, async (req, res) => {
         // validate if this account can update products (belong the company or is admin)
         if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
 
-        // validate product's name
-        if (updateProduct.name.length < 1 || updateProduct.name.length > 50) return res.status(400).send({ msg: "Product's name is invalid!" });
-        // validate product's name repeat
-        if (updateProduct.name != originalProduct.name) {
-            const verifyProductName = await Company.findOne({ products: { $elemMatch: { name: updateProduct.name } } });
-            if (verifyProductName != null) return res.status(400).send({ msg: "Product's name is not disponible!" });
+        // validate service's name
+        if (updateService.name.length < 1) return res.status(400).send({ msg: "Service's name is invalid!" });        
+        // validate service's name repeat
+        if (updateService.name != originalService.name) {
+            const verifyServiceName = await Company.findOne({ 'products.services.name': updateService.name });
+            if (verifyServiceName != null) return res.status(400).send({ msg: "Service's name is not disponible!" });
 
-            // update product
-            originalProduct.name = updateProduct.name;
+            // update service (local)
+            originalService.name = updateService.name;
+        }
 
-            // find product
-            Company.findOne({ _id: company._id }).then(doc => {
-                item = doc.products.id(req.params.id);  // get element for change
-                item["name"] = originalProduct.name;    // overwrite product's name
-                doc.save();                             // save alterations
-            }).catch(err => {
-                return res.status(400).send({ msg: "Update product failed!" });
+        // validate service's descriptions
+        if(updateService.description != null && updateService.description.length > 0){
+            // verify if service's descriptions changes
+            if(updateService.description != originalService.description) originalService.description = updateService.description;
+        }
+
+        // validate service's value      
+        if (updateService.value < 0.00) return res.status(400).send({ msg: "Service's value is invalid!" });
+        // verify if service's value changes
+        if(updateService.value != null && updateService.value != originalService.value) originalService.value = updateService.value;
+
+        // find service
+        Company.findOne({ _id: company._id }).then(doc => {
+            // get element for change
+            item = doc.products.id(product_id);
+
+            // identify index for update
+            let index = 0;
+            let indexUpdate = 0;
+            item["services"].forEach(element => {
+                if (element._id == req.params.id) {
+                    indexUpdate = index;
+                }
+                index++;
             });
 
-            // return product updated
-            return res.status(200).send({ msg: "Product updated!", data: originalProduct });
-        } else {
-            return res.status(400).send({ msg: "No product changes!" });
-        }
+            // update services
+            item["services"][indexUpdate].name = originalService.name; 
+            item["services"][indexUpdate].description = originalService.description;
+            item["services"][indexUpdate].value = originalService.value;
+
+            // save alterations
+            doc.save();
+            return res.status(200).send({ msg: "Service registred!", data: originalService });
+        }).catch(err => {
+            console.log(err);
+            return res.status(400).send({ msg: "Update service failed!" });
+        });
     } catch (error) {
-        return res.status(400).send({ msg: "Update product failed!" });
+        console.log(error);
+        return res.status(400).send({ msg: "Update service failed!" });
     }
 });
 
