@@ -118,6 +118,45 @@ router.get('/products_by_company/:id', auth, async (req, res) => {
     }
 });
 
+// consult products (and services) by product's id
+router.get('/product/:id', auth, async (req, res) => {
+    try {
+        // load company from DB        
+        const company = await Company.findOne({ products: { $elemMatch: { _id: req.params.id } } });
+        
+        // validate company
+        if (company == null) return res.status(404).send({ msg: "Product not found!" });
+
+        // load user from DB
+        const user = await User.findById(req.user.idUser);
+
+        // validate has permission
+        let hasPermission = false;
+        if (user.type != 1) {
+            user.companies.forEach(element => {
+                if (element.company_id == company.id) {
+                    // OBS: in this case, role 0 and 1 (EMPLOYEE and MANAGER) has permission for register product
+                    if (element.role == 0 || element.role == 1) {
+                        hasPermission = true;
+                    }
+                }
+            });
+        }
+
+        // validate if this account can consult products (belong the company or is admin)
+        if (hasPermission != true && user.type != 1) return res.status(401).send({ msg: "User does not have permission!" });
+        
+        // consult product (and services)
+        var data;        
+        company.products.forEach(element => {
+            if(element._id == req.params.id) data = element;            
+        });
+        return res.status(200).send({ data: data });
+    } catch (error) {        
+        return res.status(400).send({ msg: "Consult products failed!" });
+    }
+});
+
 // consult one company (and products/services)
 router.get('/company/:id', auth, async (req, res) => {
     try {
